@@ -6,13 +6,13 @@ Sphere::Sphere(const Material &material,
     Figure(material), center(center), R(R) {
 }
 
-bool Sphere::Intersection(const Ray &ray, Vector3D &point) const {
+bool Sphere::Intersection(const Ray &ray, IntersectPoint &intersection) const {
     Vector3D fromCenter = ray.source - center;
     double b = fromCenter * ray.direction;
     double c = fromCenter * fromCenter - R * R;
     double discriminant = b * b - c;
 
-    double t = 0;
+    intersection.t = 0;
     if (discriminant >= 0) {
         double sqrtDiscriminant = std::sqrt(discriminant);
         double t1 = -b - sqrtDiscriminant;
@@ -21,16 +21,18 @@ bool Sphere::Intersection(const Ray &ray, Vector3D &point) const {
         double minT = fmin(t1, t2);
         double maxT = fmax(t1, t2);
 
-        t = (minT >= 0) ? minT : maxT;
-        point = ray.source + t * ray.direction;
+        intersection.t = (minT >= 0) ? minT : maxT;
+        intersection.point = ray.source + intersection.t * ray.direction;
     }
 
-    return t > 0;
+    intersection.normal = Normal(intersection.point);
+    intersection.material = material;
+
+    return intersection.t > 0;
 }
 
 Vector3D Sphere::Normal(const Vector3D &point) const {
-    Vector3D normal = point - center;
-    normal.Normalize();
+    Vector3D normal = (point - center).Normalized();
     return normal;
 }
 
@@ -50,62 +52,34 @@ Triangle::Triangle(const Material &material,
     v[2] = v2;
 }
 
-#include <iostream>
-bool Triangle::Intersection(const Ray &ray, Vector3D &point) const {
-    Vector3D v0 = v[0];
-    Vector3D v1 = v[1];
-    Vector3D v2 = v[2];
+bool Triangle::Intersection(const Ray &ray, IntersectPoint &intersection) const {
+    Vector3D v0v1 = v[1] - v[0];
+    Vector3D v0v2 = v[2] - v[0];
+    Vector3D pvec = ray.direction ^ v0v2;
+    double det = v0v1 * pvec;
 
-    Vector3D v0v1 = v1 - v0;
-    Vector3D v0v2 = v2 - v0;
-    // no need to normalize
-    Vector3D N = v0v1 ^ v0v2; // N
-    float area2 = N.Norm();
+    double BIAS = 1e-8;
+    if (det < BIAS) return false;
+    if (std::fabs(det) < BIAS) return false;
 
-    // Step 1: finding P
+    double invDet = 1 / det;
 
-    double kEpsilon = 0.01;
-    // check if ray and plane are parallel ?
-    float NdotRayDirection = N * ray.direction;
-    if (fabs(NdotRayDirection) < kEpsilon) // almost 0
-        return false; // they are parallel so they don't intersect !
+    Vector3D tvec = ray.source - v[0];
+    double u = tvec * pvec * invDet;
+    if (u < 0 || u > 1) return false;
 
-    // compute d parameter using equation 2
-    float d = N * v0;
+    Vector3D qvec = tvec ^ v0v1;
+    double v = ray.direction * qvec * invDet;
+    if (v < 0 || u + v > 1) return false;
 
-    // compute t (equation 3)
-    double t = (N *(ray.source) + d) / NdotRayDirection;
-    // check if the triangle is in behind the ray
-    if (t < 0) return false; // the triangle is behind
+    intersection.t = v0v2 * qvec * invDet;
+    intersection.normal = Normal(v0v1);
+    intersection.point = ray.source + intersection.t * ray.direction;
+    intersection.material = material;
 
-    // compute the intersection point using equation 1
-    Vector3D P = ray.source + t * ray.direction;
-    point = P;
-
-    // Step 2: inside-outside test
-    Vector3D C; // vector perpendicular to triangle's plane
-
-    // edge 0
-    Vector3D edge0 = v1 - v0;
-    Vector3D vp0 = P - v0;
-    C = edge0 ^(vp0);
-    if (N *(C) < 0) return false; // P is on the right side
-
-    // edge 1
-    Vector3D edge1 = v2 - v1;
-    Vector3D vp1 = P - v1;
-    C = edge1 ^ (vp1);
-    if (N *(C) < 0)  return false; // P is on the right side
-
-    // edge 2
-    Vector3D edge2 = v0 - v2;
-    Vector3D vp2 = P - v2;
-    C = edge2 ^ (vp2);
-    if (N *(C) < 0) return false; // P is on the right side;
-
-    return true; // this ray hits the triangle
+    return intersection.t > BIAS;
 }
 
 Vector3D Triangle::Normal(const Vector3D &point) const {
-    return ((v[2] - v[0]) ^ (v[1] - v[0])).Normalized();
+    return ((v[1] - v[0]) ^ (v[2] - v[0])).Normalized();
 }

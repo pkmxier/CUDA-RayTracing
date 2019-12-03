@@ -6,10 +6,10 @@
 class Light {
 public:
     Vector3D position;
-    Color color;
     double intensity;
 
-    Light(const Vector3D &pos, double intensity);
+    Light(const Vector3D &p, double i) : position(p), intensity(i){
+    }
 };
 
 #endif // LIGHT_H

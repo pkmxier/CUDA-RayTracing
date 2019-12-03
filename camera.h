@@ -8,7 +8,7 @@ public:
 
     CylinderPoint() {}
     CylinderPoint(double r, double phi, double z) : r(r), phi(phi), z(z) {}
-    Vector3D ToCartesian() {
+    Vector3D ToCartesian() const {
         return Vector3D(r * sin(phi), z, r * cos(phi));
     }
 
@@ -33,29 +33,35 @@ public:
     }
 };
 
-class Camera {
-private:
-    CylinderPoint Move(const CylinderPoint &start, const CameraParameters &params,
-                   double t);
-public:
+struct CameraPoints {
     CylinderPoint position;
     CylinderPoint lookAt;
+
+    CameraPoints() {}
+    CameraPoints(const CylinderPoint &pos, const CylinderPoint &lookAt) : position(pos), lookAt(lookAt) {}
+};
+
+class Camera {
+private:
+    CylinderPoint Move(const CylinderPoint &start, const CameraParameters &params, double t) const;
+public:
+    CameraPoints points;
+    CameraParameters posParams;
+    CameraParameters lookAtParams;
     int width;
     int height;
     double fov;
-    double viewRange = 1e9;
 
     Camera() {}
     Camera(const CylinderPoint &position, const CylinderPoint &lookAt,
-           int width, int height, double fov, double viewRange) :
-        position(position), lookAt(lookAt),
-        width(width), height(height), fov(fov), viewRange(viewRange) {
+           const CameraParameters &posParams,
+           const CameraParameters &lookAtParams,
+           int width, int height, double fov) :
+        points(position, lookAt), posParams(posParams), lookAtParams(lookAtParams),
+        width(width), height(height), fov(fov) {
     }
 
-    void Move(const CylinderPoint &startPos, const CylinderPoint &startLookAt,
-              double t,
-              const CameraParameters &posParams,
-              const CameraParameters &lookAtParams);
+    CameraPoints Move(double t) const;
 };
 
 #endif // CAMERA_H

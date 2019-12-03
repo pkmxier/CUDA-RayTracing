@@ -33,10 +33,10 @@ Vector3D Vector3D::operator /(double scale) {
     return (*this) * (1.0 / scale);
 }
 
-Vector3D Vector3D::operator ^(const Vector3D &rhs) {
-    return Vector3D(y * rhs.z - z * rhs.y,
-                    - x * rhs.z + z * rhs.x,
-                    x * rhs.y - y * rhs.x);
+Vector3D operator ^(const Vector3D &lhs, const Vector3D &rhs) {
+    return Vector3D(lhs.y * rhs.z - lhs.z * rhs.y,
+                    - lhs.x * rhs.z + lhs.z * rhs.x,
+                    lhs.x * rhs.y - lhs.y * rhs.x);
 }
 
 Vector3D operator +(const Vector3D &lhs, const Vector3D &rhs) {
